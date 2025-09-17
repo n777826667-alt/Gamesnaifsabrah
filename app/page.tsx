@@ -38,6 +38,8 @@ export default function FoodWheelPage() {
   const [probabilityMessageFoods, setProbabilityMessageFoods] = useState<string[]>([])
   const [clickedFoods, setClickedFoods] = useState<Set<string>>(new Set())
   const [meatClickHistory, setMeatClickHistory] = useState<{ [key: string]: string[] }>({})
+  const [fishClickedFoods, setFishClickedFoods] = useState<Set<string>>(new Set())
+  const [waitingForFishFollow, setWaitingForFishFollow] = useState(false)
 
   const getPatternPredictions = (sequence: string[]): PredictionResult => {
     const lastTwo = sequence.slice(-2).join("→")
@@ -66,7 +68,7 @@ export default function FoodWheelPage() {
         } else if (lastOne === "بقره") {
           allFoods = ["طماط", "بيبار", "ذرة", "جزر", "بقره", "سمكة", "جمبري"]
         } else if (lastOne === "سمكة") {
-          allFoods = ["طماط", "بيبار", "ذرة", "جزر", "بقره", "جمبري"]
+          allFoods = ["بيبار", "ذرة", "جزر", "جمبري"].filter((food) => !fishClickedFoods.has(food))
         } else if (lastOne === "جمبري") {
           allFoods = ["طماط", "بيبار", "ذرة", "جزر", "بقره", "سمكة", "جمبري", "كتكوت"]
         }
@@ -239,6 +241,19 @@ export default function FoodWheelPage() {
     newClickedFoods.add(food)
     setClickedFoods(newClickedFoods)
 
+    if (waitingForFishFollow) {
+      // If we were waiting for a click after fish, record this food
+      const newFishClickedFoods = new Set(fishClickedFoods)
+      newFishClickedFoods.add(food)
+      setFishClickedFoods(newFishClickedFoods)
+      setWaitingForFishFollow(false)
+    }
+
+    if (food === "سمكة") {
+      // When clicking fish, prepare to track the next click
+      setWaitingForFishFollow(true)
+    }
+
     const meatFoods = ["كتكوت", "بقره", "سمكة", "جمبري"]
     if (meatFoods.includes(food)) {
       const newHistory = { ...meatClickHistory }
@@ -319,6 +334,8 @@ export default function FoodWheelPage() {
       setProbabilityMessageFoods([])
       setClickedFoods(new Set())
       setMeatClickHistory({})
+      setFishClickedFoods(new Set())
+      setWaitingForFishFollow(false)
     } catch (error) {
       console.error("Error clearing results:", error)
     }
