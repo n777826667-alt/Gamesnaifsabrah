@@ -33,102 +33,71 @@ export default function FoodWheelPage() {
   const [selectedFood, setSelectedFood] = useState<string | null>(null)
   const [results, setResults] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [showPopup, setShowPopup] = useState(false)
-  const [popupFood, setPopupFood] = useState("")
   const [showMeatPopup, setShowMeatPopup] = useState(false)
-  const [showMeatClickPopup, setShowMeatClickPopup] = useState(false)
-  const [showMeatWarningPopup, setShowMeatWarningPopup] = useState(false)
   const [showProbabilityMessage, setShowProbabilityMessage] = useState(false)
   const [probabilityMessageFoods, setProbabilityMessageFoods] = useState<string[]>([])
+  const [clickedFoods, setClickedFoods] = useState<Set<string>>(new Set())
+  const [meatClickHistory, setMeatClickHistory] = useState<{ [key: string]: string[] }>({})
 
   const getPatternPredictions = (sequence: string[]): PredictionResult => {
-    const sequenceStr = sequence.join("→")
-    const lastFew = sequence.slice(-5).join("→")
-    const lastFour = sequence.slice(-4).join("→")
-    const lastThree = sequence.slice(-3).join("→")
     const lastTwo = sequence.slice(-2).join("→")
     const lastOne = sequence.slice(-1)[0]
 
-    // Pattern matching for specific sequences
     const patterns: { [key: string]: string[] } = {
-      // New patterns for dark red highlighting
-      جمبري: ["سمكة"], // When clicking shrimp, highlight fish
-      "جزر→جزر": ["جمبري", "سمكة"], // When clicking carrot→carrot, highlight shrimp & fish
+      طماط: ["بيبار", "ذرة", "جزر", "جمبري", "بقره", "سمكة"],
+      ذرة: ["طماط", "بيبار", "جزر", "جمبري", "بقره", "سمكة"],
+      جزر: ["طماط", "بيبار", "ذرة", "جمبري", "بقره", "سمكة"],
+      بيبار: ["طماط", "ذرة", "جزر", "جمبري", "بقره", "سمكة"],
 
-      "بيبار→ذرة→بيبار": ["ذرة", "جزر"],
-      "ذرة→بيبار→ذرة": ["طماط", "جزر"],
-      "طماط→جزر→طماط": ["بيبار", "ذرة"],
-      "جزر→طماط→جزر": ["ذرة", "بيبار"],
-
-      // Existing patterns
-      "بيبار→ذرة→بيبار→ذرة→بيبار": ["جمبري", "بقره"],
-      "طماط→جزر": ["سمكة", "جمبري", "بقره"],
-      "ذرة→ذرة→ذرة→ذرة": ["كتكوت", "بقره", "سمكة", "جمبري"],
-      "بيبار→بيبار→ذرة": ["سمكة", "جمبري", "بقره", "كتكوت"],
-      "طماط→طماط→جزر": ["سمكة", "جمبري", "بقره", "كتكوت"],
-      "جزر→طماط": ["سمكة", "جمبري", "بقره", "كتكوت"],
-      "ذرة→ذرة→بيبار": ["سمكة", "جمبري", "بقره", "كتكوت"],
-      "بيبار→ذرة": ["سمكة", "جمبري", "بقره", "كتكوت"],
-      "ذرة→بيبار": ["سمكة", "جمبري", "بقره", "كتكوت"],
-      "جزر→جزر→طماط": ["سمكة", "جمبري", "بقره", "كتكوت"],
-      "جزر→جزر→جزر→طماط": ["سمكة", "جمبري", "بقره", "كتكوت"],
-      "بيبار→بيبار→بيبار→ذرة": ["سمكة", "جمبري", "بقره", "كتكوت"],
-      "طماط→طماط→طماط→ذرة": ["سمكة", "جمبري", "بقره", "كتكوت"],
+      "بقره→جزر": ["جزر", "ذرة", "بيبار", "جمبري", "سمكة"],
+      "جمبري→جزر": ["جزر", "ذرة", "بيبار", "كتكوت", "جمبري", "سمكة"],
+      "كتكوت→جزر": ["جزر", "ذرة", "بيبار", "جمبري", "سمكة"],
+      "سمكة→جزر": ["جزر", "ذرة", "بيبار", "كتكوت", "جمبري", "سمكة"],
     }
 
-    // Check for pattern matches - prioritize longer patterns first
+    const meatFoods = ["كتكوت", "بقره", "سمكة", "جمبري"]
+    if (meatFoods.includes(lastOne)) {
+      const clickHistory = meatClickHistory[lastOne] || []
+
+      if (clickHistory.length === 0) {
+        let allFoods = ["طماط", "بيبار", "ذرة", "جزر", "بقره", "سمكة"]
+        if (lastOne === "كتكوت") {
+          allFoods = ["طماط", "بيبار", "ذرة", "جزر", "بقره", "سمكة"]
+        } else if (lastOne === "بقره") {
+          allFoods = ["طماط", "بيبار", "ذرة", "جزر", "بقره", "سمكة", "جمبري"]
+        } else if (lastOne === "سمكة") {
+          allFoods = ["طماط", "بيبار", "ذرة", "جزر", "بقره", "جمبري"]
+        } else if (lastOne === "جمبري") {
+          allFoods = ["طماط", "بيبار", "ذرة", "جزر", "بقره", "سمكة", "جمبري", "كتكوت"]
+        }
+
+        const filteredFoods = allFoods.filter((food) => !clickedFoods.has(food))
+        patterns[lastOne] = filteredFoods
+      }
+    }
+
     let matchedFoods: string[] = []
 
-    if (patterns[lastOne]) {
-      matchedFoods = patterns[lastOne]
-    } else if (patterns[lastFew]) {
-      matchedFoods = patterns[lastFew]
-    } else if (patterns[lastFour]) {
-      matchedFoods = patterns[lastFour]
-    } else if (patterns[lastThree]) {
-      matchedFoods = patterns[lastThree]
-    } else if (patterns[lastTwo]) {
+    if (patterns[lastTwo]) {
       matchedFoods = patterns[lastTwo]
+    } else if (patterns[lastOne]) {
+      matchedFoods = patterns[lastOne]
     }
 
     if (matchedFoods.length > 0) {
       const result: PredictionResult = {}
-      const lastFood = sequence[sequence.length - 1]
 
-      // Create predictions for the last clicked food
-      const predictions: Prediction[] = matchedFoods.map((food, index) => ({
-        food,
-        probability: 80 - index * 15, // Decreasing probabilities: 80%, 65%, 50%, 35%
-      }))
-
-      // For patterns that require removing highlighting from other foods
-      const patternsWithReduction = [
-        "ذرة→ذرة→ذرة→ذرة",
-        "طماط→طماط→جزر",
-        "جزر→طماط",
-        "ذرة→ذرة→بيبار",
-        "بيبار→ذرة",
-        "ذرة→بيبار",
-        "طماط→جزر",
-        "جزر→جزر→طماط",
-        "جزر→جزر→جزر→طماط",
-        "بيبار→بيبار→بيبار→ذرة",
-        "طماط→طماط→طماط→ذرة",
-      ]
-
-      const shouldReduceHighlighting = patternsWithReduction.some(
-        (pattern) => lastFew === pattern || lastFour === pattern || lastThree === pattern || lastTwo === pattern,
-      )
-
-      if (shouldReduceHighlighting && predictions.length > 3) {
-        // Keep only 3 predictions for patterns that require reduction
-        predictions.splice(3)
-      } else if (lastFour === "ذرة→ذرة→ذرة→ذرة") {
-        // Special case: remove highlighting from one other food
-        predictions.splice(3, 1)
+      if (meatFoods.includes(lastOne)) {
+        const clickHistory = meatClickHistory[lastOne] || []
+        matchedFoods = matchedFoods.filter((food) => !clickHistory.includes(food))
       }
 
-      result[lastFood] = predictions
+      const predictions: Prediction[] = matchedFoods.map((food, index) => ({
+        food,
+        probability: 80 - index * 10,
+      }))
+
+      result[lastOne] = predictions
       return result
     }
 
@@ -140,12 +109,9 @@ export default function FoodWheelPage() {
     const lastThree = sequence.slice(-3).join("→")
     const lastFour = sequence.slice(-4).join("→")
 
-    // Pattern messages for "احتمال" above specific foods
     const probabilityPatterns: { [key: string]: string[] } = {
       "جزر→ذرة→جزر→ذرة": ["بقره", "جمبري"],
       "بيبار→طماط→بيبار→طماط": ["بقره", "جمبري"],
-
-      // New patterns from user requirements
       "ذرة→ذرة": ["جمبري", "سمكة"],
       "بيبار→بيبار": ["بقره", "كتكوت"],
       "طماط→طماط": ["جمبري", "بقره"],
@@ -153,16 +119,6 @@ export default function FoodWheelPage() {
       "بيبار→ذرة": ["بيبار", "ذرة"],
       "طماط→جزر": ["جزر"],
       "جزر→طماط": ["طماط"],
-
-      // Existing patterns
-      "ذرة→ذرة→بيبار": ["طماط", "جزر"],
-      "ذرة→ذرة→ذرة→بيبار": ["طماط", "جزر"],
-      "بيبار→بيبار→ذرة": ["طماط", "جزر"],
-      "بيبار→بيبار→بيبار→ذرة": ["طماط", "جزر"],
-      "طماط→طماط→جزر": ["ذرة", "بيبار"],
-      "طماط→طماط→طماط→جزر": ["ذرة", "بيبار"],
-      "جزر→جزر→طماط": ["ذرة", "بيبار"],
-      "جزر→جزر→جزر→طماط": ["ذرة", "بيبار"],
     }
 
     if (probabilityPatterns[lastFour]) {
@@ -180,8 +136,8 @@ export default function FoodWheelPage() {
     const pos = foodPositions[food as keyof typeof foodPositions]
     if (!pos) return { top: "50%", left: "50%" }
 
-    const radius = 120 // Distance from center - reduced for smaller circle
-    const angleRad = (pos.angle - 90) * (Math.PI / 180) // Convert to radians, adjust for top start
+    const radius = 120
+    const angleRad = (pos.angle - 90) * (Math.PI / 180)
     const x = Math.cos(angleRad) * radius
     const y = Math.sin(angleRad) * radius
 
@@ -198,14 +154,8 @@ export default function FoodWheelPage() {
     const prediction = predictions[selectedFood].find((p) => p.food === food)
     if (!prediction) return ""
 
-    const opacity = Math.max(prediction.probability / 100, 0.3) // Minimum 30% opacity
-    if (prediction.probability > 50) {
-      return `rgba(255, 0, 0, ${opacity})` // Strong red for high probability
-    } else if (prediction.probability > 25) {
-      return `rgba(255, 165, 0, ${opacity})` // Orange for medium probability
-    } else {
-      return `rgba(255, 255, 0, ${opacity})` // Yellow for low probability
-    }
+    const opacity = Math.max(prediction.probability / 100, 0.3)
+    return `rgba(255, 0, 0, ${opacity})`
   }
 
   const getFoodBorder = (food: string) => {
@@ -214,21 +164,10 @@ export default function FoodWheelPage() {
     const prediction = predictions[selectedFood].find((p) => p.food === food)
     if (!prediction) return "4px solid #fff"
 
-    const meatFoods = ["كتكوت", "جمبري", "بقره", "سمكة"]
-    if (meatFoods.includes(food) && prediction.probability > 0) {
-      return "6px solid #8B0000" // Dark red border for meat foods
+    if (prediction.probability > 0) {
+      return "6px solid #ff0000"
     }
-
-    if (prediction.probability > 50) {
-      return "6px solid #ff0000" // Thick red border for high probability
-    } else if (prediction.probability > 25) {
-      return "5px solid #ffa500" // Medium orange border
-    } else if (prediction.probability > 10) {
-      return "4px solid #ffff00" // Yellow border for low probability
-    } else if (prediction.probability > 0) {
-      return "3px dashed #888888" // Dashed gray border for very low probability
-    }
-    return "4px solid #fff" // Default white border
+    return "4px solid #fff"
   }
 
   const getFoodShadow = (food: string) => {
@@ -237,44 +176,11 @@ export default function FoodWheelPage() {
     const prediction = predictions[selectedFood].find((p) => p.food === food)
     if (!prediction) return "0 4px 8px rgba(0,0,0,0.3)"
 
-    const meatFoods = ["كتكوت", "جمبري", "بقره", "سمكة"]
-    const lastTwo = results.slice(-2).join("→")
-    const lastOne = results.slice(-1)[0]
-
-    const isDarkRedPattern =
-      (lastOne === "جمبري" && food === "سمكة") || (lastTwo === "جزر→جزر" && (food === "جمبري" || food === "سمكة"))
-
-    if (isDarkRedPattern && prediction.probability > 0) {
-      return "0 0 80px rgba(139, 0, 0, 1), 0 0 160px rgba(139, 0, 0, 0.9), 0 0 240px rgba(139, 0, 0, 0.7), 0 0 320px rgba(139, 0, 0, 0.5)" // Extra intense dark red glow
-    } else if (meatFoods.includes(food) && prediction.probability > 0) {
-      return "0 0 60px rgba(139, 0, 0, 1), 0 0 120px rgba(139, 0, 0, 0.8), 0 0 180px rgba(139, 0, 0, 0.6), 0 0 240px rgba(139, 0, 0, 0.4)" // Intense dark red glow for meat foods
+    if (prediction.probability > 0) {
+      return "0 0 50px rgba(255, 0, 0, 0.9), 0 0 100px rgba(255, 0, 0, 0.6), 0 0 150px rgba(255, 0, 0, 0.3)"
     }
 
-    if (prediction.probability > 50) {
-      return "0 0 50px rgba(255, 0, 0, 0.9), 0 0 100px rgba(255, 0, 0, 0.6), 0 0 150px rgba(255, 0, 0, 0.3)" // Much stronger red glow
-    } else if (prediction.probability > 25) {
-      return "0 0 40px rgba(255, 165, 0, 0.8), 0 0 80px rgba(255, 165, 0, 0.5), 0 0 120px rgba(255, 165, 0, 0.3)" // Enhanced orange glow
-    } else {
-      return "0 0 35px rgba(255, 255, 0, 0.7), 0 0 70px rgba(255, 255, 0, 0.4), 0 0 105px rgba(255, 255, 0, 0.2)" // Enhanced yellow glow
-    }
-  }
-
-  const getLowProbabilityIndicator = (food: string) => {
-    if (!selectedFood || !predictions[selectedFood]) return null
-
-    const prediction = predictions[selectedFood].find((p) => p.food === food)
-    if (!prediction || prediction.probability > 10) return null
-
-    // Show additional circle indicator for very low probability foods (0-10%)
-    return (
-      <div
-        className="absolute inset-0 rounded-full border-2 border-dashed border-gray-400 animate-pulse"
-        style={{
-          transform: "scale(1.3)", // Make it slightly larger than the food image
-          zIndex: -1,
-        }}
-      />
-    )
+    return "0 4px 8px rgba(0,0,0,0.3)"
   }
 
   useEffect(() => {
@@ -296,12 +202,10 @@ export default function FoodWheelPage() {
           )
 
           if (hasMeatPrediction) {
-            setShowPopup(false)
             setShowMeatPopup(true)
           }
         }
       } else {
-        // Fall back to API predictions if no pattern match
         const response = await fetch("/api/predict?count=3")
         const data = await response.json()
         setPredictions(data.predictions)
@@ -313,7 +217,6 @@ export default function FoodWheelPage() {
           )
 
           if (hasMeatPrediction) {
-            setShowPopup(false)
             setShowMeatPopup(true)
           }
         }
@@ -326,22 +229,37 @@ export default function FoodWheelPage() {
   }
 
   const handleFoodClick = async (food: string) => {
-    setShowPopup(false)
     setShowMeatPopup(false)
-    setShowMeatClickPopup(false)
-    setShowMeatWarningPopup(false)
     setShowProbabilityMessage(false)
     setProbabilityMessageFoods([])
 
     setSelectedFood(food)
 
-    if (["بيبار", "طماط", "جزر", "ذرة"].includes(food)) {
-      setPopupFood(food)
-      setShowPopup(true)
+    const newClickedFoods = new Set(clickedFoods)
+    newClickedFoods.add(food)
+    setClickedFoods(newClickedFoods)
+
+    const meatFoods = ["كتكوت", "بقره", "سمكة", "جمبري"]
+    if (meatFoods.includes(food)) {
+      const newHistory = { ...meatClickHistory }
+      if (!newHistory[food]) {
+        newHistory[food] = []
+      }
+      setMeatClickHistory(newHistory)
     }
 
-    if (["بقره", "كتكوت", "جمبري", "سمكة"].includes(food)) {
-      setShowMeatWarningPopup(true)
+    if (results.length > 0) {
+      const lastFood = results[results.length - 1]
+      if (meatFoods.includes(lastFood)) {
+        const newHistory = { ...meatClickHistory }
+        if (!newHistory[lastFood]) {
+          newHistory[lastFood] = []
+        }
+        if (!newHistory[lastFood].includes(food)) {
+          newHistory[lastFood].push(food)
+        }
+        setMeatClickHistory(newHistory)
+      }
     }
 
     try {
@@ -356,14 +274,12 @@ export default function FoodWheelPage() {
 
       setIsLoading(true)
 
-      // Check for pattern-based predictions with new sequence
       const patternPredictions = getPatternPredictions(newResults)
 
       const probabilityFoods = checkProbabilityMessage(newResults)
       if (probabilityFoods.length > 0) {
         setProbabilityMessageFoods(probabilityFoods)
         setShowProbabilityMessage(true)
-        // Auto-hide after 10 seconds
         setTimeout(() => {
           setShowProbabilityMessage(false)
           setProbabilityMessageFoods([])
@@ -379,11 +295,9 @@ export default function FoodWheelPage() {
           patternPredictions[food].some((pred: Prediction) => meatFoods.includes(pred.food) && pred.probability > 0)
 
         if (hasMeatPrediction) {
-          setShowPopup(false)
           setShowMeatPopup(true)
         }
       } else {
-        // Fall back to API predictions
         const response = await fetch("/api/predict?count=3")
         const data = await response.json()
         setPredictions(data.predictions)
@@ -403,6 +317,8 @@ export default function FoodWheelPage() {
       setPredictions({})
       setShowProbabilityMessage(false)
       setProbabilityMessageFoods([])
+      setClickedFoods(new Set())
+      setMeatClickHistory({})
     } catch (error) {
       console.error("Error clearing results:", error)
     }
@@ -421,7 +337,17 @@ export default function FoodWheelPage() {
 
       <div className="absolute top-0 left-0 right-0 z-20 p-6 text-center">
         <div className="relative">
-          <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-transparent bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500 bg-clip-text mb-4 drop-shadow-2xl animate-pulse">
+          <h1
+            className="text-3xl md:text-5xl lg:text-6xl font-bold text-yellow-400 mb-4 drop-shadow-2xl animate-pulse"
+            style={{
+              background: "linear-gradient(to right, #fbbf24, #ef4444, #ec4899)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+              textShadow: "2px 2px 4px rgba(0,0,0,0.8), 0 0 20px rgba(255,255,255,0.3)",
+              filter: "drop-shadow(0 0 10px rgba(251, 191, 36, 0.5))",
+            }}
+          >
             الرجل الالكتروني اليمني
           </h1>
           <div className="absolute inset-0 text-3xl md:text-5xl lg:text-6xl text-white opacity-20 blur-sm animate-pulse">
@@ -429,7 +355,12 @@ export default function FoodWheelPage() {
           </div>
         </div>
         <div className="relative mt-2">
-          <p className="text-lg md:text-xl lg:text-2xl text-yellow-300 font-semibold drop-shadow-lg animate-bounce">
+          <p
+            className="text-lg md:text-xl lg:text-2xl text-yellow-300 font-semibold drop-shadow-lg animate-bounce"
+            style={{
+              textShadow: "2px 2px 4px rgba(0,0,0,0.8), 0 0 10px rgba(255,255,0,0.5)",
+            }}
+          >
             برمجه نايف صبره 777826667
           </p>
           <div className="absolute inset-0 text-lg md:text-xl lg:text-2xl text-red-400 opacity-30 blur-sm">
@@ -456,27 +387,6 @@ export default function FoodWheelPage() {
             </div>
           )}
 
-          {showMeatWarningPopup && (
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30">
-              <Card className="p-4 bg-red-600/95 backdrop-blur-sm border-2 border-red-800 shadow-2xl">
-                <div className="text-center">
-                  <p className="text-lg font-bold text-white">لاتراهن الجوله هذه</p>
-                </div>
-              </Card>
-            </div>
-          )}
-
-          {showPopup && (
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30">
-              <Card className="p-3 bg-red-600/95 backdrop-blur-sm border-2 border-yellow-400 shadow-2xl animate-pulse">
-                <div className="text-center text-white">
-                  <p className="text-base font-bold mb-2">لاتنسى ربما يعاود</p>
-                  <p className="text-lg font-extrabold text-yellow-300">{popupFood}</p>
-                </div>
-              </Card>
-            </div>
-          )}
-
           {showProbabilityMessage &&
             probabilityMessageFoods.map((food, index) => {
               const position = getFoodPosition(food)
@@ -486,7 +396,7 @@ export default function FoodWheelPage() {
                   className="absolute z-40 pointer-events-none"
                   style={{
                     ...position,
-                    transform: "translate(-50%, -150%)", // Position above the food
+                    transform: "translate(-50%, -150%)",
                   }}
                 >
                   <Card className="p-2 bg-blue-400/95 backdrop-blur-sm border-2 border-blue-600 shadow-2xl animate-pulse">
@@ -509,7 +419,6 @@ export default function FoodWheelPage() {
                 border: getFoodBorder(food),
               }}
             >
-              {getLowProbabilityIndicator(food)}
               <img
                 src={
                   food === "طماط"
@@ -546,7 +455,6 @@ export default function FoodWheelPage() {
               border: getFoodBorder("بيتزا"),
             }}
           >
-            {getLowProbabilityIndicator("بيتزا")}
             <img
               src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/%D8%A8%D9%8A%D8%AA%D8%B2%D8%A7-kgeE8lXk9kufhhYhtJJxHjXt0WATSe.png"
               alt="بيتزا"
@@ -562,7 +470,6 @@ export default function FoodWheelPage() {
               border: getFoodBorder("سلطه"),
             }}
           >
-            {getLowProbabilityIndicator("سلطه")}
             <img
               src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/%D8%B3%D9%84%D8%B7%D8%A9-nC3OpL4lMFQoGo8x8nEVsIrH5V7yHz.png"
               alt="سلطه"
