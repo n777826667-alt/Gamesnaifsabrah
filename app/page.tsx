@@ -33,8 +33,6 @@ export default function FoodWheelPage() {
   const [selectedFood, setSelectedFood] = useState<string | null>(null)
   const [results, setResults] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [showProbabilityMessage, setShowProbabilityMessage] = useState(false)
-  const [probabilityMessageFoods, setProbabilityMessageFoods] = useState<string[]>([])
   const [clickedFoods, setClickedFoods] = useState<Set<string>>(new Set())
   const [meatClickHistory, setMeatClickHistory] = useState<{ [key: string]: string[] }>({})
   const [fishClickedFoods, setFishClickedFoods] = useState<Set<string>>(new Set())
@@ -105,34 +103,6 @@ export default function FoodWheelPage() {
     }
 
     return {}
-  }
-
-  const checkProbabilityMessage = (sequence: string[]): string[] => {
-    const lastTwo = sequence.slice(-2).join("→")
-    const lastThree = sequence.slice(-3).join("→")
-    const lastFour = sequence.slice(-4).join("→")
-
-    const probabilityPatterns: { [key: string]: string[] } = {
-      "جزر→ذرة→جزر→ذرة": ["بقره", "جمبري"],
-      "بيبار→طماط→بيبار→طماط": ["بقره", "جمبري"],
-      "ذرة→ذرة": ["جمبري", "سمكة"],
-      "بيبار→بيبار": ["بقره", "كتكوت"],
-      "طماط→طماط": ["جمبري", "بقره"],
-      "ذرة→بيبار": ["ذرة", "بيبار"],
-      "بيبار→ذرة": ["بيبار", "ذرة"],
-      "طماط→جزر": ["جزر"],
-      "جزر→طماط": ["طماط"],
-    }
-
-    if (probabilityPatterns[lastFour]) {
-      return probabilityPatterns[lastFour]
-    } else if (probabilityPatterns[lastThree]) {
-      return probabilityPatterns[lastThree]
-    } else if (probabilityPatterns[lastTwo]) {
-      return probabilityPatterns[lastTwo]
-    }
-
-    return []
   }
 
   const getFoodPosition = (food: string) => {
@@ -210,9 +180,6 @@ export default function FoodWheelPage() {
   }
 
   const handleFoodClick = async (food: string) => {
-    setShowProbabilityMessage(false)
-    setProbabilityMessageFoods([])
-
     setSelectedFood(food)
 
     const newClickedFoods = new Set(clickedFoods)
@@ -269,16 +236,6 @@ export default function FoodWheelPage() {
 
       const patternPredictions = getPatternPredictions(newResults)
 
-      const probabilityFoods = checkProbabilityMessage(newResults)
-      if (probabilityFoods.length > 0) {
-        setProbabilityMessageFoods(probabilityFoods)
-        setShowProbabilityMessage(true)
-        setTimeout(() => {
-          setShowProbabilityMessage(false)
-          setProbabilityMessageFoods([])
-        }, 10000)
-      }
-
       if (Object.keys(patternPredictions).length > 0) {
         setPredictions(patternPredictions)
       } else {
@@ -299,8 +256,6 @@ export default function FoodWheelPage() {
       await fetch("/api/results", { method: "DELETE" })
       setResults([])
       setPredictions({})
-      setShowProbabilityMessage(false)
-      setProbabilityMessageFoods([])
       setClickedFoods(new Set())
       setMeatClickHistory({})
       setFishClickedFoods(new Set())
@@ -362,27 +317,6 @@ export default function FoodWheelPage() {
             alt="Food Wheel"
             className="w-80 h-80 md:w-96 md:h-96 lg:w-[480px] lg:h-[480px] object-contain"
           />
-
-          {showProbabilityMessage &&
-            probabilityMessageFoods.map((food, index) => {
-              const position = getFoodPosition(food)
-              return (
-                <div
-                  key={`probability-${food}-${index}`}
-                  className="absolute z-40 pointer-events-none"
-                  style={{
-                    ...position,
-                    transform: "translate(-50%, -150%)",
-                  }}
-                >
-                  <Card className="p-2 bg-blue-400/95 backdrop-blur-sm border-2 border-blue-600 shadow-2xl animate-pulse">
-                    <div className="text-center">
-                      <p className="text-sm font-bold text-white whitespace-nowrap">احتمال</p>
-                    </div>
-                  </Card>
-                </div>
-              )
-            })}
 
           {Object.entries(foodPositions).map(([food, _]) => (
             <button
