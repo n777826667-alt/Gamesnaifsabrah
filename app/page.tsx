@@ -33,7 +33,6 @@ export default function FoodWheelPage() {
   const [selectedFood, setSelectedFood] = useState<string | null>(null)
   const [results, setResults] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [showMeatPopup, setShowMeatPopup] = useState(false)
   const [showProbabilityMessage, setShowProbabilityMessage] = useState(false)
   const [probabilityMessageFoods, setProbabilityMessageFoods] = useState<string[]>([])
   const [clickedFoods, setClickedFoods] = useState<Set<string>>(new Set())
@@ -93,11 +92,6 @@ export default function FoodWheelPage() {
 
     if (matchedFoods.length > 0) {
       const result: PredictionResult = {}
-
-      if (meatFoods.includes(lastOne)) {
-        const clickHistory = meatClickHistory[lastOne] || []
-        matchedFoods = matchedFoods.filter((food) => !clickHistory.includes(food))
-      }
 
       const predictions: Prediction[] = matchedFoods.map((food, index) => ({
         food,
@@ -201,32 +195,10 @@ export default function FoodWheelPage() {
 
       if (Object.keys(patternPredictions).length > 0) {
         setPredictions(patternPredictions)
-
-        if (selectedFood && patternPredictions[selectedFood]) {
-          const meatFoods = ["سمكة", "بقره", "كتكوت", "جمبري"]
-          const hasMeatPrediction = patternPredictions[selectedFood].some(
-            (pred: Prediction) => meatFoods.includes(pred.food) && pred.probability > 0,
-          )
-
-          if (hasMeatPrediction) {
-            setShowMeatPopup(true)
-          }
-        }
       } else {
         const response = await fetch("/api/predict?count=3")
         const data = await response.json()
         setPredictions(data.predictions)
-
-        if (selectedFood && data.predictions[selectedFood]) {
-          const meatFoods = ["سمكة", "بقره", "كتكوت", "جمبري"]
-          const hasMeatPrediction = data.predictions[selectedFood].some(
-            (pred: Prediction) => meatFoods.includes(pred.food) && pred.probability > 0,
-          )
-
-          if (hasMeatPrediction) {
-            setShowMeatPopup(true)
-          }
-        }
       }
     } catch (error) {
       console.error("Error getting predictions:", error)
@@ -236,7 +208,6 @@ export default function FoodWheelPage() {
   }
 
   const handleFoodClick = async (food: string) => {
-    setShowMeatPopup(false)
     setShowProbabilityMessage(false)
     setProbabilityMessageFoods([])
 
@@ -308,15 +279,6 @@ export default function FoodWheelPage() {
 
       if (Object.keys(patternPredictions).length > 0) {
         setPredictions(patternPredictions)
-
-        const meatFoods = ["بقره", "كتكوت", "جمبري", "سمكة"]
-        const hasMeatPrediction =
-          patternPredictions[food] &&
-          patternPredictions[food].some((pred: Prediction) => meatFoods.includes(pred.food) && pred.probability > 0)
-
-        if (hasMeatPrediction) {
-          setShowMeatPopup(true)
-        }
       } else {
         const response = await fetch("/api/predict?count=3")
         const data = await response.json()
@@ -398,16 +360,6 @@ export default function FoodWheelPage() {
             alt="Food Wheel"
             className="w-80 h-80 md:w-96 md:h-96 lg:w-[480px] lg:h-[480px] object-contain"
           />
-
-          {showMeatPopup && (
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30">
-              <Card className="p-4 bg-yellow-400/95 backdrop-blur-sm border-2 border-yellow-600 shadow-2xl">
-                <div className="text-center">
-                  <p className="text-lg font-bold text-red-800">لاتنسى اللحوم</p>
-                </div>
-              </Card>
-            </div>
-          )}
 
           {showProbabilityMessage &&
             probabilityMessageFoods.map((food, index) => {
