@@ -19,6 +19,13 @@ const foodPositions = {
   ذرة: { angle: 315, position: "10:30" }, // 10:30
 }
 
+const highlightRules = {
+  طماط: ["طماط", "ذرة", "بيبار", "جزر"],
+  جزر: ["طماط", "بيبار", "ذرة", "جزر"],
+  ذرة: ["ذرة", "جزر", "بيبار", "طماط"],
+  بيبار: ["طماط", "بيبار", "جزر", "ذرة"],
+}
+
 interface Prediction {
   food: string
   probability: number
@@ -37,6 +44,7 @@ export default function FoodWheelPage() {
   const [meatClickHistory, setMeatClickHistory] = useState<{ [key: string]: string[] }>({})
   const [fishClickedFoods, setFishClickedFoods] = useState<Set<string>>(new Set())
   const [waitingForFishFollow, setWaitingForFishFollow] = useState(false)
+  const [highlightedFoods, setHighlightedFoods] = useState<Set<string>>(new Set())
 
   const getPatternPredictions = (sequence: string[]): PredictionResult => {
     const lastTwo = sequence.slice(-2).join("→")
@@ -122,6 +130,10 @@ export default function FoodWheelPage() {
   }
 
   const getFoodHighlight = (food: string) => {
+    if (highlightedFoods.has(food)) {
+      return "rgba(255, 215, 0, 0.8)" // Gold highlight for selected foods
+    }
+
     if (!selectedFood || !predictions[selectedFood]) return ""
 
     const prediction = predictions[selectedFood].find((p) => p.food === food)
@@ -132,6 +144,10 @@ export default function FoodWheelPage() {
   }
 
   const getFoodBorder = (food: string) => {
+    if (highlightedFoods.has(food)) {
+      return "6px solid #FFD700" // Gold border for highlighted foods
+    }
+
     if (!selectedFood || !predictions[selectedFood]) return "4px solid #fff"
 
     const prediction = predictions[selectedFood].find((p) => p.food === food)
@@ -144,6 +160,10 @@ export default function FoodWheelPage() {
   }
 
   const getFoodShadow = (food: string) => {
+    if (highlightedFoods.has(food)) {
+      return "0 0 30px rgba(255, 215, 0, 0.9), 0 0 60px rgba(255, 215, 0, 0.6), 0 0 90px rgba(255, 215, 0, 0.3)"
+    }
+
     if (!selectedFood || !predictions[selectedFood]) return "0 4px 8px rgba(0,0,0,0.3)"
 
     const prediction = predictions[selectedFood].find((p) => p.food === food)
@@ -181,6 +201,13 @@ export default function FoodWheelPage() {
 
   const handleFoodClick = async (food: string) => {
     setSelectedFood(food)
+
+    if (highlightRules[food as keyof typeof highlightRules]) {
+      const foodsToHighlight = highlightRules[food as keyof typeof highlightRules]
+      setHighlightedFoods(new Set(foodsToHighlight))
+    } else {
+      setHighlightedFoods(new Set())
+    }
 
     const newClickedFoods = new Set(clickedFoods)
     newClickedFoods.add(food)
@@ -260,6 +287,7 @@ export default function FoodWheelPage() {
       setMeatClickHistory({})
       setFishClickedFoods(new Set())
       setWaitingForFishFollow(false)
+      setHighlightedFoods(new Set())
     } catch (error) {
       console.error("Error clearing results:", error)
     }
@@ -327,6 +355,7 @@ export default function FoodWheelPage() {
                 ...getFoodPosition(food),
                 boxShadow: getFoodShadow(food),
                 border: getFoodBorder(food),
+                backgroundColor: getFoodHighlight(food),
               }}
             >
               <img
@@ -363,6 +392,7 @@ export default function FoodWheelPage() {
             style={{
               boxShadow: getFoodShadow("بيتزا"),
               border: getFoodBorder("بيتزا"),
+              backgroundColor: getFoodHighlight("بيتزا"),
             }}
           >
             <img
@@ -378,6 +408,7 @@ export default function FoodWheelPage() {
             style={{
               boxShadow: getFoodShadow("سلطه"),
               border: getFoodBorder("سلطه"),
+              backgroundColor: getFoodHighlight("سلطه"),
             }}
           >
             <img
